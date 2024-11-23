@@ -1,7 +1,5 @@
 # python3-cyberfusion-rpc-client
 
-Library for AMQP with RabbitMQ.
-
 This library provides a developer-friendly interface to do RPC requests (using [Pika](https://github.com/pika/pika)).
 
 The library can be used on the requesting side of [RabbitMQ consumer](https://github.com/CyberfusionIO/python3-cyberfusion-rabbitmq-consumer).
