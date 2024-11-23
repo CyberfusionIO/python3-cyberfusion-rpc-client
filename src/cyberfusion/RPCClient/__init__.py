@@ -25,6 +25,9 @@ class RPCClient:
         """Set attributes."""
         self.credentials = credentials
 
+        self.queue_name = queue_name
+        self.exchange_name = exchange_name
+
         self.rpc = RPC(
             self.credentials,
             routing_key=queue_name,
