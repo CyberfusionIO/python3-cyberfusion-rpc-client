@@ -1,0 +1,32 @@
+include:
+  - project: 'shared/gitlab-ci-includes'
+    ref: main
+    file:
+      - '/base.yml'
+      - '/pypi-packages.yml'
+      - '/debian-packages.yml'
+      - '/python.yml'
+
+variables:
+  APTLY_BASE_REPOSITORY: common
+
+stages:
+  - test
+  - build
+  - publish
+
+unit test and feature test:
+  stage: test
+  image: python:3.11
+  services:
+    - name: rabbitmq:3.9.13-management
+      alias: rabbitmq
+  script:
+    - !reference [.add repositories, script]
+    - pip install --no-cache-dir -r requirements/test.txt
+    - pip install .
+    - pytest -vvv --cov-branch --cov=cyberfusion.RPCClient --cov-config=.coveragerc --cov-fail-under=95 --junitxml=report-pytest.xml
+      --rabbitmq-host=rabbitmq --rabbitmq-port=5672 --rabbitmq-management-port=15672
+  artifacts:
+    reports:
+      junit: report-*.xml
