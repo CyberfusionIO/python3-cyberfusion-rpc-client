@@ -5,7 +5,7 @@ from functools import cached_property
 from typing import Any, NoReturn
 
 from cyberfusion.RPCClient import RabbitMQCredentials
-
+from cyberfusion.RPCClient.enums import ExchangeType
 import pika
 
 from cyberfusion.RPCClient._utilities import create_connection_from_credentials
@@ -37,6 +37,11 @@ class RPC:
         self.callback_queue = self.channel.queue_declare(
             queue="", exclusive=True
         ).method.queue
+
+        self.channel.exchange_declare(
+            exchange=self.exchange_name,
+            exchange_type=ExchangeType.DIRECT,
+        )
 
         self.channel.queue_bind(exchange=self.exchange_name, queue=self.callback_queue)
 
