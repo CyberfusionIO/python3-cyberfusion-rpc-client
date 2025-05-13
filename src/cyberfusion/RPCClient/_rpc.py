@@ -1,5 +1,6 @@
 """Internal RPC tooling."""
 
+import time
 import uuid
 from functools import cached_property
 from typing import Any, NoReturn
@@ -95,6 +96,8 @@ class RPC:
 
         while self.response is None:
             self.connection.process_data_events()
+
+            time.sleep(0.5)
 
         self.connection.close()  # type: ignore[unreachable]
 
