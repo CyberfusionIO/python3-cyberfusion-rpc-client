@@ -5,11 +5,14 @@ import uuid
 from functools import cached_property
 from typing import Any, NoReturn
 
+from pika.exceptions import UnroutableError
+
 from cyberfusion.RPCClient import RabbitMQCredentials
 from cyberfusion.RPCClient.enums import ExchangeType
 import pika
 
 from cyberfusion.RPCClient._utilities import create_connection_from_credentials
+from cyberfusion.RPCClient.exceptions import MessageUnroutable
 
 
 class RPC:
@@ -65,34 +68,41 @@ class RPC:
         """Get randomly generated correlation ID."""
         return str(uuid.uuid4())
 
-    def publish(self, body: Any, *, content_type: str) -> Any:
+    def publish(self, body: Any, *, content_type: str, mandatory: bool) -> Any:
         """Publish RPC request."""
-        self.channel.basic_publish(
-            exchange=self.exchange_name,
-            body=body,
-            properties=pika.BasicProperties(
-                content_type=content_type,
-                reply_to=self.callback_queue,
-                correlation_id=self.correlation_id,
-                #
-                # $TIMEOUT can be reached in two cases:
-                #
-                # - When the message isn't acked in $TIMEOUT, e.g. because the
-                #   consumer is offline
-                # - When the message processing takes $TIMEOUT
-                #
-                # In either case, an exception is raised in the 'timeout' method.
-                # When this happens because of case #1 (message not acked), we want
-                # to ensure that the RPC message does not start processing when the
-                # consumer is able to process the message. Therefore, the RPC message
-                # should expire after $TIMEOUT; this ensures that, once we've returned
-                # the definitive state by raising an exception in the `handle_timeout`
-                # method, the RPC call will not process in the background unexpectedly.
-                #
-                expiration=str(self.timeout * 1000),
-            ),
-            routing_key=self.routing_key,
-        )
+        if mandatory:
+            self.channel.confirm_delivery()
+
+        try:
+            self.channel.basic_publish(
+                exchange=self.exchange_name,
+                body=body,
+                properties=pika.BasicProperties(
+                    content_type=content_type,
+                    reply_to=self.callback_queue,
+                    correlation_id=self.correlation_id,
+                    #
+                    # $TIMEOUT can be reached in two cases:
+                    #
+                    # - When the message isn't acked in $TIMEOUT, e.g. because the
+                    #   consumer is offline
+                    # - When the message processing takes $TIMEOUT
+                    #
+                    # In either case, an exception is raised in the 'timeout' method.
+                    # When this happens because of case #1 (message not acked), we want
+                    # to ensure that the RPC message does not start processing when the
+                    # consumer is able to process the message. Therefore, the RPC message
+                    # should expire after $TIMEOUT; this ensures that, once we've returned
+                    # the definitive state by raising an exception in the `handle_timeout`
+                    # method, the RPC call will not process in the background unexpectedly.
+                    #
+                    expiration=str(self.timeout * 1000),
+                ),
+                routing_key=self.routing_key,
+                mandatory=mandatory,
+            )
+        except UnroutableError as e:
+            raise MessageUnroutable from e
 
         while self.response is None:
             self.connection.process_data_events()

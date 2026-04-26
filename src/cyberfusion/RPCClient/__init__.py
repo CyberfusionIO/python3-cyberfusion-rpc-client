@@ -36,7 +36,11 @@ class RPCClient:
         )
 
     def request(
-        self, body: Any, *, content_type: ContentType = ContentType.JSON
+        self,
+        body: Any,
+        *,
+        content_type: ContentType = ContentType.JSON,
+        mandatory: bool = False,
     ) -> Any:
         """Publish RPC request.
 
@@ -46,4 +50,4 @@ class RPCClient:
         if content_type == ContentType.JSON and not isinstance(body, str):
             body = json.dumps(body)
 
-        return self.rpc.publish(body, content_type=content_type)
+        return self.rpc.publish(body, content_type=content_type, mandatory=mandatory)
